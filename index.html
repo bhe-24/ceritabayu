@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Karya Bayu</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; }
+    nav { background: #333; color: white; padding: 10px; display: flex; gap: 10px; }
+    nav button { background: white; color: black; border: none; padding: 8px; cursor: pointer; }
+    section { padding: 20px; display: none; }
+    section.active { display: block; }
+    textarea { width: 100%; height: 150px; }
+    input, select { width: 100%; padding: 8px; margin: 8px 0; }
+    .karya { border: 1px solid #ddd; margin-bottom: 10px; padding: 10px; }
+    .search { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <button onclick="tampilkan('beranda')">Beranda</button>
+  <button onclick="tampilkan('puisi')">Puisi</button>
+  <button onclick="tampilkan('cerpen')">Cerpen</button>
+  <button onclick="tampilkan('menulis')">Tulis Karya</button>
+</nav>
+
+<section id="beranda" class="active">
+  <h2>Karya Terbaru</h2>
+  <div id="karya-terbaru">Memuat...</div>
+</section>
+
+<section id="puisi">
+  <h2>Semua Puisi</h2>
+  <input type="text" id="searchPuisi" class="search" placeholder="Cari puisi..." oninput="filterKarya('puisi')">
+  <div id="daftar-puisi"></div>
+</section>
+
+<section id="cerpen">
+  <h2>Semua Cerpen</h2>
+  <input type="text" id="searchCerpen" class="search" placeholder="Cari cerpen..." oninput="filterKarya('cerpen')">
+  <div id="daftar-cerpen"></div>
+</section>
+
+<section id="menulis">
+  <h2>Tulis Karya Baru</h2>
+  <input type="text" id="judul" placeholder="Judul">
+  <input type="text" id="penulis" placeholder="Nama Penulis">
+  <select id="kategori">
+    <option value="puisi">Puisi</option>
+    <option value="cerpen">Cerpen</option>
+  </select>
+  <textarea id="konten" placeholder="Tulis isi karya di sini..."></textarea>
+  <button onclick="kirimKarya()">Kirim</button>
+  <p id="status"></p>
+</section>
+
+<script>
+const URL = "https://script.google.com/macros/s/AKfycbwbdb2oLngQBRBP3KijN8boac3DArhBIlcufKZa_Kvxi3NwZuu_yR2icaCNscACc8Lhkw/exec";
+
+function tampilkan(id) {
+  document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function kirimKarya() {
+  const data = {
+    judul: document.getElementById("judul").value,
+    penulis: document.getElementById("penulis").value,
+    kategori: document.getElementById("kategori").value,
+    konten: document.getElementById("konten").value
+  };
+
+  fetch(URL, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(res => res.text())
+  .then(response => {
+    document.getElementById("status").textContent = "Karya berhasil dikirim!";
+    document.getElementById("judul").value = "";
+    document.getElementById("penulis").value = "";
+    document.getElementById("konten").value = "";
+    loadData(); // update beranda
+  })
+  .catch(err => {
+    document.getElementById("status").textContent = "Gagal mengirim!";
+  });
+}
+
+let semuaKarya = [];
+
+function loadData() {
+  fetch(URL)
+    .then(res => res.json())
+    .then(data => {
+      semuaKarya = data.reverse(); // urutan terbaru dulu
+      tampilkanBeranda();
+      tampilkanKarya('puisi');
+      tampilkanKarya('cerpen');
+    });
+}
+
+function tampilkanBeranda() {
+  const terbaru = semuaKarya[0];
+  if (!terbaru) return document.getElementById("karya-terbaru").textContent = "Belum ada karya.";
+  document.getElementById("karya-terbaru").innerHTML = `
+    <div class="karya">
+      <h3>${terbaru.judul}</h3>
+      <p><strong>${terbaru.penulis}</strong> - ${terbaru.kategori}</p>
+      <p>${terbaru.konten}</p>
+      <small>${new Date(terbaru.tanggal).toLocaleString()}</small>
+    </div>
+  `;
+}
+
+function tampilkanKarya(kategori) {
+  const hasil = semuaKarya.filter(k => k.kategori.toLowerCase() === kategori);
+  const tempat = document.getElementById(`daftar-${kategori}`);
+  tempat.innerHTML = hasil.map(k => `
+    <div class="karya">
+      <h3>${k.judul}</h3>
+      <p><strong>${k.penulis}</strong></p>
+      <p>${k.konten}</p>
+      <small>${new Date(k.tanggal).toLocaleString()}</small>
+    </div>
+  `).join('');
+}
+
+function filterKarya(kategori) {
+  const keyword = document.getElementById(`search${kategori.charAt(0).toUpperCase() + kategori.slice(1)}`).value.toLowerCase();
+  const hasil = semuaKarya.filter(k => k.kategori === kategori && (
+    k.judul.toLowerCase().includes(keyword) ||
+    k.penulis.toLowerCase().includes(keyword) ||
+    k.konten.toLowerCase().includes(keyword)
+  ));
+
+  const tempat = document.getElementById(`daftar-${kategori}`);
+  tempat.innerHTML = hasil.map(k => `
+    <div class="karya">
+      <h3>${k.judul}</h3>
+      <p><strong>${k.penulis}</strong></p>
+      <p>${k.konten}</p>
+      <small>${new Date(k.tanggal).toLocaleString()}</small>
+    </div>
+  `).join('');
+}
+
+loadData();
+</script>
+
+</body>
+</html>
